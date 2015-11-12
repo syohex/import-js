@@ -214,9 +214,16 @@ module ImportJS
 
       egrep_command =
         "egrep -i \"(/|^)#{formatted_to_regex(variable_name)}(/index)?(/package)?\.js.*\""
+      prune_switch = '\( ' +
+                     @config.package_dependencies.map do |dep|
+                       "-path ./node_modules/#{dep}"
+                     end.join(' -o ') +
+                     ' \) -prune -o '
+
       matched_modules = []
       @config.get('lookup_paths').each do |lookup_path|
-        find_command = "find #{lookup_path} -name \"**.js*\""
+        prune = prune_switch if lookup_path == 'node_modules'
+        find_command = "find #{lookup_path} #{prune}-name \"**.js*\" -print "
         out, _ = Open3.capture3("#{find_command} | #{egrep_command}")
         matched_modules.concat(
           out.split("\n").map do |f|
