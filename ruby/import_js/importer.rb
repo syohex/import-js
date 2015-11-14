@@ -216,14 +216,7 @@ module ImportJS
         "egrep -i \"(/|^)#{formatted_to_regex(variable_name)}(/index)?(/package)?\.js.*\""
       matched_modules = []
       @config.get('lookup_paths').each do |lookup_path|
-        folders_to_recurse = [lookup_path]
-        if lookup_path == 'node_modules'
-          folders_to_recurse = @config.package_dependencies.map do |dep|
-            "node_modules/#{dep}"
-          end
-        end
-        find_command =
-          "find #{folders_to_recurse.join(' ')} -name \"**.js*\" -print "
+        find_command = "find #{lookup_path} -name \"**.js*\" -print "
         out, _ = Open3.capture3("#{find_command} | #{egrep_command}")
         matched_modules.concat(
           out.split("\n").map do |f|
@@ -235,6 +228,15 @@ module ImportJS
             js_module
           end.compact
         )
+      end
+
+      # Find imports from package.json
+      @config.package_dependencies.each do |dep|
+        next unless dep =~ /^#{formatted_to_regex(variable_name)}$/
+        js_module = ImportJS::JSModule.new(
+          'node_modules', "node_modules/#{dep}/package.json", @config)
+        next if js_module.skip
+        matched_modules << js_module
       end
 
       # If you have overlapping lookup paths, you might end up seeing the same
