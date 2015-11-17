@@ -55,6 +55,19 @@ module ImportJS
       end
     end
 
+    def remove_unused_imports
+      @config.refresh
+      imports = find_current_imports
+      lines = @editor.current_file_content.split("\n")
+      file_content = lines[imports[:newline_count], lines.length].join("\n")
+      imports[:imports].each_with_index do |line, index|
+        variable = line.split(/\s/)[1]
+        next if file_content =~ /[\s<()]#{variable}[.,()\s>]/
+
+        @editor.delete_line(index + 1)
+      end
+    end
+
     private
 
     def message(str)
